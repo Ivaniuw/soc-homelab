@@ -1,0 +1,30 @@
+<!-- Custom rules added to /var/ossec/etc/rules/local_rules.xml on the Wazuh manager (4.14.10).
+     Checked with: sudo /var/ossec/bin/wazuh-analysisd -t
+     Applied with: sudo systemctl restart wazuh-manager -->
+
+<group name="local,sysmon,tuning,">
+  <!-- Tuning 92213: PowerShell creates this test script in Temp on every start
+       to check App Control / AppLocker policy. Verified benign in triage 08.11.2026. -->
+  <rule id="100100" level="3">
+    <if_sid>92213</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\\\powershell\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\\\AppData\\\\Local\\\\Temp\\\\__PSScriptPolicyTest_[a-z0-9]+\.[a-z0-9]+\.ps1$</field>
+    <description>PowerShell script policy test file in Temp - known benign (tuned from 92213)</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="local,windows,authentication_failures,">
+  <!-- Correlation: 5 failed logons (60122) for the SAME account within 120 s.
+       Built-in rules did not flag 5 failures in 24 s during the 08.11.2026 test. -->
+  <rule id="100120" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.targetUserName</same_field>
+    <description>Possible brute force: 5 failed logons for account $(win.eventdata.targetUserName) in 2 minutes</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+</group>
