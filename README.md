@@ -13,6 +13,7 @@ monitor file integrity. Built over one weekend, 7–8 November 2026.
 | Attack simulation | new local admin + password guessing + account deletion, all detected |
 | Detection engineering | correlation rule `100120` for brute force (T1110) |
 | File Integrity Monitoring | real-time FIM with content diff |
+| **Attacking my own lab** | Kali: Nmap, Hydra, Burp → 10 findings, SIEM takeover fixed and retested – **[pentest report](pentest/REPORT.md)** |
 
 ## Lab setup
 
@@ -192,6 +193,20 @@ requirement, not an option.
 For files that hold real secrets Wazuh has the `nodiff` option – the change is reported, the content is not.
 A security tool can become a source of leaks if it is configured without thinking.
 
+## 7. Attacking my own lab (purple team)
+
+After building the defence I attacked the lab from a **Kali Linux** VM, then checked every attack from the SIEM
+side, fixed what I found and repeated the attack. Full write-up: **[pentest/REPORT.md](pentest/REPORT.md)**.
+
+| Attack | Result | What Wazuh saw |
+|---|---|---|
+| Nmap, all 65,535 ports | product identified from an HTTP header | **nothing** – a host-based SIEM needs a network sensor for scans |
+| Hydra on SSH | default password found in seconds → `sudo` on the SIEM server | 5763 brute force (10) and **40112 failures followed by a success (12)** |
+| Fix + retest | key-only SSH (ECDSA – the server runs in FIPS mode), new dashboard password | Hydra: `does not support password authentication` |
+| Burp vs Juice Shop | SQL injection → admin token → password hash in the JWT → `admin123`; IDOR on baskets | not monitored (app inside the attacker VM) |
+
+On the way I also found and removed an unknown SSH key (`vagrant`) that came with the VM image.
+
 ## Other findings
 
 - **Oversized events are dropped.** The manager logged `Could not read XML string` for one Sysmon process event:
@@ -202,10 +217,11 @@ A security tool can become a source of leaks if it is configured without thinkin
 
 ## Limitations and honest notes
 
-- **Default credentials were kept** (`wazuh-user` / `admin`). The lab is reachable only inside my home network, with
-  no port forwarding. In a real deployment changing them is the first step. My first attempt to change the system
-  password through the VirtualBox console locked me out: the console used a different keyboard layout than the
-  one I typed with. I re-imported the VM; next time I change passwords over SSH, with ASCII characters only.
+- **Default credentials were kept at first** (`wazuh-user` / `admin`), because the lab is reachable only inside my
+  home network. My first attempt to change the system password through the VirtualBox console locked me out: the
+  console used a different keyboard layout than the one I typed with, and I had to re-import the VM. The attack
+  from Kali then showed exactly why defaults matter, so I fixed it properly: SSH is key-only and the dashboard
+  password is generated. Only the local VirtualBox console still uses the default password.
 - **The monitored endpoint is my own laptop**, not a separate victim VM, so attack simulations were limited to
   safe actions with a test account that I removed afterwards.
 - One endpoint and two days of data – enough to learn the workflow, not to build a baseline.
@@ -220,6 +236,7 @@ A security tool can become a source of leaks if it is configured without thinkin
 
 ## Next
 
+- **Suricata** as a network sensor, so scans like the one in the pentest become visible.
 - **Honeypot (OpenCanary)** sending logs to the same Wazuh.
 - A separate Windows VM as the victim, so attack simulations can go further.
 
@@ -229,4 +246,6 @@ A security tool can become a source of leaks if it is configured without thinkin
 config/agent.conf        centralized agent configuration (Sysmon channel + FIM)
 rules/local_rules.xml    custom rules 100100 (tuning) and 100120 (brute force)
 screenshots/             evidence for every step
+pentest/REPORT.md        penetration test of the lab: scope, findings, detection view, retest
+pentest/screenshots/     evidence for the pentest
 ```
