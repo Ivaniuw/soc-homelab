@@ -14,6 +14,7 @@ monitor file integrity. Built over one weekend, 7–8 November 2026.
 | Detection engineering | correlation rule `100120` for brute force (T1110) |
 | File Integrity Monitoring | real-time FIM with content diff |
 | **Attacking my own lab** | Kali: Nmap, Hydra, Burp → 10 findings, SIEM takeover fixed and retested – **[pentest report](pentest/REPORT.md)** |
+| **Network IDS** | Suricata vs the Nmap scan Wazuh missed: 68k flows seen, but 0 real detections – visibility ≠ detection – **[write-up](network-ids/README.md)** |
 
 ## Lab setup
 
